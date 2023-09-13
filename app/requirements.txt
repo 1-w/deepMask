@@ -1,5 +1,5 @@
 --extra-index-url https://download.pytorch.org/whl/lts/1.8/cpu
-antspyx==0.3.5 --only-binary=antspyx
+antspyx==0.3.8 --only-binary=antspyx
 antspynet==0.2.0
 gast<=0.4.0,>=0.2.1
 matplotlib==3.5.1

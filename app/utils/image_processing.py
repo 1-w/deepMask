@@ -40,7 +40,6 @@ logger.addHandler(handler)
 os.environ["ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS"] = str(multiprocessing.cpu_count())
 os.environ["ANTS_RANDOM_SEED"] = "666"
 
-
 class noelImageProcessor:
     def __init__(
         self,
@@ -107,11 +106,11 @@ class noelImageProcessor:
             # write forward transforms to xfmdir
             ants.write_transform(
                 ants.read_transform(self._t1_reg["fwdtransforms"][0]),
-                os.path.join(xfmdir, self._id + "_t1-native-to-MNI152.mat"),
+                os.path.join(xfmdir, self._id + "_label-2MNI152_T1w.mat"),
             )
             ants.write_transform(
                 ants.read_transform(self._t2_reg["fwdtransforms"][0]),
-                os.path.join(xfmdir, self._id + "_t2-native-to-MNI152.mat"),
+                os.path.join(xfmdir, self._id + "_label-2MNI152_FLAIR.mat"),
             )
             # self._t2_reg = ants.apply_transforms(fixed = self._t1_reg['warpedmovout'], moving = self._t2, transformlist = self._t1_reg['fwdtransforms'])
             # ants.image_write( self._t1_reg['warpedmovout'], self._t1regfile)
@@ -157,23 +156,26 @@ class noelImageProcessor:
                     )
                     * 100
                 )
-            self._t1regfile = os.path.join(
-                self._outputdir, self._id + "_t1_final.nii.gz"
-            )
-            self._t2regfile = os.path.join(
-                self._outputdir, self._id + "_t2_final.nii.gz"
-            )
+            if 'space' in self._t1file:
+                self._t1regfile = os.path.join(self._outputdir, os.path.basename(re.sub( r'space[^_]*', "space-MNI152NLin2009aSym",self._t1file)))                
+            else:
+                self._t1regfile = os.path.join(self._outputdir, os.path.basename(self._t1file).replace('T1w','_space-MNI152NLin2009aSym_T1w'))
+                
+            
+            if 'space' in self._t2file:
+                self._t2regfile =   os.path.join(self._outputdir, os.path.basename(re.sub( r'space[^_]*', "space-MNI152NLin2009aSym",self._t2file)))
+                
+            else:
+                self._t2regfile = os.path.join(self._outputdir, os.path.basename(self._t2file).replace('FLAIR','_space-MNI152NLin2009aSym_T1w'))
+                
             ants.image_write(self._t1_n4, self._t1regfile)
             ants.image_write(self._t2_n4, self._t2regfile)
 
     def __skull_stripping(self):
         # specify the output filenames for brain extracted images
-        self._t1brainfile = os.path.join(
-            self._outputdir, self._id + "_t1" + self._outsuffix
-        )
-        self._t2brainfile = os.path.join(
-            self._outputdir, self._id + "_t2" + self._outsuffix
-        )
+        self._t1brainfile = self._t1regfile.replace('T1w', 'label-brain_T1w')
+        self._t2brainfile = self._t2regfile.replace('FLAIR', 'label-brain_FLAIR')
+        
         if os.environ.get("BRAIN_MASKING") == "cpu":
             logger.info("performing brain extraction using ANTsPyNet")
             print("performing brain extraction using ANTsPyNet")
@@ -258,10 +260,10 @@ class noelImageProcessor:
         mask_suffix = "_brain_mask_native.nii.gz"
         # write skull-stripped versions of the brain mask in native space
         ants.image_write(
-            self._t1_native, self._t1brainfile.replace(self._outsuffix, mask_suffix)
+            self._t1_native, self._t1brainfile.replace('.nii.gz', '_mask.nii.gz')
         )
         ants.image_write(
-            self._t2_native, self._t2brainfile.replace(self._outsuffix, mask_suffix)
+            self._t2_native, self._t2brainfile.replace('.nii.gz', '_mask.nii.gz')
         )
 
     def __generate_QC_maps(self):
@@ -379,27 +381,37 @@ class noelImageProcessor:
     def __organize_and_cleanup(self):
         logger.info("moving intermediate files to args.tmpdir, reorganizing the rest")
         print("moving intermediate files to args.tmpdir, reorganizing the rest")
-
+        _rename_suffix = "_denseCrf3dSegmMap.nii.gz"
+        
+        _native_suffix = "_native.nii.gz"
+        
         _move_suffix = {
             "_denseCrf3dProbMapClass1.nii.gz",
             "_denseCrf3dProbMapClass0.nii.gz",
             "_vnet_maskpred.nii.gz",
         }
-        _rename_suffix = "_denseCrf3dSegmMap.nii.gz"
+        
         # _final_suffix = "_final.nii.gz"
-        _native_suffix = "_native.nii.gz"
+       
+
+        # os.path.join(dst, case_id + "_space-MNI152NLin2009aSym_acq-vnet_pred.nii.gz"),
+        # os.path.join(dst, case_id + "_vnet_maskpred.nii.gz"),
+
 
         for file in os.listdir(self._outputdir):
             if file.endswith(_rename_suffix):
                 src = os.path.join(self._outputdir, file)
                 dst = os.path.join(
                     self._outputdir,
-                    file.replace(_rename_suffix, "_brain_mask_final.nii.gz"),
+                    file.replace(_rename_suffix, "_space-MNI152NLin2009aSym_acq-vnet_label-brain_mask.nii.gz"),
                 )
                 os.renames(src, dst)
             if file.endswith(_native_suffix):
                 src = os.path.join(self._outputdir, file)
-                dst = os.path.join(self._outputdir, "native", file)
+                if 't1' in src:
+                    dst = os.path.join(self._outputdir, os.path.basename(self._t1file).replace("T1w", "_acq-T1w_label-brain_mask.nii.gz"))
+                else:
+                    dst = os.path.join(self._outputdir, os.path.basename(self._t2file).replace("FLAIR", "_acq-FLAIR_label-brain_mask.nii.gz"))
                 os.renames(src, dst)
             # if file.endswith(_final_suffix):
             #     src = os.path.join(self._outputdir, file)
@@ -408,24 +420,8 @@ class noelImageProcessor:
             for _suffix in _move_suffix:
                 if file.endswith(_suffix):
                     src = os.path.join(self._outputdir, file)
-                    dst = os.path.join(self._args.tmpdir, "deepMask", file)
-                    os.renames(src, dst)
-
-    # def __create_zip_archive(self):
-    #     print("creating a zip archive")
-    #     logger.info("creating a zip archive")
-    #     zip_archive = zipfile.ZipFile(
-    #         os.path.join(self._outputdir, self._id + "_archive.zip"), "w"
-    #     )
-    #     for folder, _, files in os.walk(self._outputdir):
-    #         for file in files:
-    #             if file.endswith(".nii.gz"):
-    #                 zip_archive.write(
-    #                     os.path.join(folder, file),
-    #                     file,
-    #                     compress_type=zipfile.ZIP_DEFLATED,
-    #                 )
-    #     zip_archive.close()
+                    # dst = os.path.join(self._args.tmpdir, "deepMask", file)
+                    # os.renames(src, dst)
 
     def pipeline(self):
         start = time.time()
