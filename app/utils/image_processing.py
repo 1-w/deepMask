@@ -2,17 +2,20 @@ import ants
 import os
 import logging
 import time
+
 # import matplotlib as mpl
 # mpl.use("Qt5Agg")
 import matplotlib.pyplot as plt
 import multiprocessing
 import numpy as np
+
 # import zipfile
 
 from antspynet.utilities import brain_extraction
 from .deepmask import *
 from .helpers import *
 from matplotlib.backends.backend_pdf import PdfPages
+
 # read pngs to save as pdf
 from PIL import Image
 
@@ -39,6 +42,7 @@ logger.addHandler(handler)
 
 os.environ["ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS"] = str(multiprocessing.cpu_count())
 os.environ["ANTS_RANDOM_SEED"] = "666"
+
 
 class noelImageProcessor:
     def __init__(
@@ -156,26 +160,45 @@ class noelImageProcessor:
                     )
                     * 100
                 )
-            if 'space' in self._t1file:
-                self._t1regfile = os.path.join(self._outputdir, os.path.basename(re.sub( r'space[^_]*', "space-MNI152NLin2009aSym",self._t1file)))                
+            if "space" in self._t1file:
+                self._t1regfile = os.path.join(
+                    self._outputdir,
+                    os.path.basename(
+                        re.sub(r"space[^_]*", "space-MNI152NLin2009aSym", self._t1file)
+                    ),
+                )
             else:
-                self._t1regfile = os.path.join(self._outputdir, os.path.basename(self._t1file).replace('T1w','_space-MNI152NLin2009aSym_T1w'))
-                
-            
-            if 'space' in self._t2file:
-                self._t2regfile =   os.path.join(self._outputdir, os.path.basename(re.sub( r'space[^_]*', "space-MNI152NLin2009aSym",self._t2file)))
-                
+                self._t1regfile = os.path.join(
+                    self._outputdir,
+                    os.path.basename(self._t1file).replace(
+                        "T1w", "space-MNI152NLin2009aSym_T1w"
+                    ),
+                )
+
+            if "space" in self._t2file:
+                self._t2regfile = os.path.join(
+                    self._outputdir,
+                    os.path.basename(
+                        re.sub(r"space[^_]*", "space-MNI152NLin2009aSym", self._t2file)
+                    ),
+                )
+
             else:
-                self._t2regfile = os.path.join(self._outputdir, os.path.basename(self._t2file).replace('FLAIR','_space-MNI152NLin2009aSym_T1w'))
-                
+                self._t2regfile = os.path.join(
+                    self._outputdir,
+                    os.path.basename(self._t2file).replace(
+                        "FLAIR", "space-MNI152NLin2009aSym_FLAIR"
+                    ),
+                )
+
             ants.image_write(self._t1_n4, self._t1regfile)
             ants.image_write(self._t2_n4, self._t2regfile)
 
     def __skull_stripping(self):
         # specify the output filenames for brain extracted images
-        self._t1brainfile = self._t1regfile.replace('T1w', 'label-brain_T1w')
-        self._t2brainfile = self._t2regfile.replace('FLAIR', 'label-brain_FLAIR')
-        
+        self._t1brainfile = self._t1regfile.replace("T1w", "label-brain_T1w")
+        self._t2brainfile = self._t2regfile.replace("FLAIR", "label-brain_FLAIR")
+
         if os.environ.get("BRAIN_MASKING") == "cpu":
             logger.info("performing brain extraction using ANTsPyNet")
             print("performing brain extraction using ANTsPyNet")
@@ -260,10 +283,10 @@ class noelImageProcessor:
         mask_suffix = "_brain_mask_native.nii.gz"
         # write skull-stripped versions of the brain mask in native space
         ants.image_write(
-            self._t1_native, self._t1brainfile.replace('.nii.gz', '_mask.nii.gz')
+            self._t1_native, self._t1brainfile.replace(".nii.gz", "_mask.nii.gz")
         )
         ants.image_write(
-            self._t2_native, self._t2brainfile.replace('.nii.gz', '_mask.nii.gz')
+            self._t2_native, self._t2brainfile.replace(".nii.gz", "_mask.nii.gz")
         )
 
     def __generate_QC_maps(self):
@@ -382,36 +405,47 @@ class noelImageProcessor:
         logger.info("moving intermediate files to args.tmpdir, reorganizing the rest")
         print("moving intermediate files to args.tmpdir, reorganizing the rest")
         _rename_suffix = "_denseCrf3dSegmMap.nii.gz"
-        
+
         _native_suffix = "_native.nii.gz"
-        
+
         _move_suffix = {
             "_denseCrf3dProbMapClass1.nii.gz",
             "_denseCrf3dProbMapClass0.nii.gz",
             "_vnet_maskpred.nii.gz",
         }
-        
+
         # _final_suffix = "_final.nii.gz"
-       
 
         # os.path.join(dst, case_id + "_space-MNI152NLin2009aSym_acq-vnet_pred.nii.gz"),
         # os.path.join(dst, case_id + "_vnet_maskpred.nii.gz"),
-
 
         for file in os.listdir(self._outputdir):
             if file.endswith(_rename_suffix):
                 src = os.path.join(self._outputdir, file)
                 dst = os.path.join(
                     self._outputdir,
-                    file.replace(_rename_suffix, "_space-MNI152NLin2009aSym_acq-vnet_label-brain_mask.nii.gz"),
+                    file.replace(
+                        _rename_suffix,
+                        "_space-MNI152NLin2009aSym_acq-vnet_label-brain_mask.nii.gz",
+                    ),
                 )
                 os.renames(src, dst)
             if file.endswith(_native_suffix):
                 src = os.path.join(self._outputdir, file)
-                if 't1' in src:
-                    dst = os.path.join(self._outputdir, os.path.basename(self._t1file).replace("T1w", "_acq-T1w_label-brain_mask.nii.gz"))
+                if "t1" in src:
+                    dst = os.path.join(
+                        self._outputdir,
+                        os.path.basename(self._t1file).replace(
+                            "T1w", "_acq-T1w_label-brain_mask.nii.gz"
+                        ),
+                    )
                 else:
-                    dst = os.path.join(self._outputdir, os.path.basename(self._t2file).replace("FLAIR", "_acq-FLAIR_label-brain_mask.nii.gz"))
+                    dst = os.path.join(
+                        self._outputdir,
+                        os.path.basename(self._t2file).replace(
+                            "FLAIR", "_acq-FLAIR_label-brain_mask.nii.gz"
+                        ),
+                    )
                 os.renames(src, dst)
             # if file.endswith(_final_suffix):
             #     src = os.path.join(self._outputdir, file)

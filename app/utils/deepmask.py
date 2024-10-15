@@ -71,6 +71,7 @@ def deepMask(args, model, id, t1w_np, t2w_np, t1w_fname, t2w_fname, nifti=True):
         out_shape,
         config,
         dst,
+        # os.path.join(dst, case_id + "_space-MNI152NLin2009aSym_acq-vnet_pred.nii.gz"),
         os.path.join(dst, case_id + "_vnet_maskpred.nii.gz"),
     )
     elapsed_time = time.time() - start_time
@@ -78,7 +79,9 @@ def deepMask(args, model, id, t1w_np, t2w_np, t1w_fname, t2w_fname, nifti=True):
     print("=> dense 3D-CRF inference time: {} seconds".format(round(elapsed_time, 2)))
     print("=" * 70)
 
+    # fname = os.path.join(dst, case_id + "_space-MNI152NLin2009aSym_acq-vnet_label-denseCrf3dSegmMap_mask.nii.gz")
     fname = os.path.join(dst, case_id + "_denseCrf3dSegmMap.nii.gz")
+
     seg_map = load_nii(fname).get_fdata()
     return seg_map
 
